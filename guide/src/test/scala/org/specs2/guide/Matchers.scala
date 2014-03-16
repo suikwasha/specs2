@@ -90,10 +90,6 @@ There are many ways to create matchers for your specific usage. The simplest way
 
 def beBetween(i: Int, j: Int) = be_>=(i) and be_<=(j)
 
-// create a Seq Matcher from a Matcher
-def allBeGreaterThan2: Matcher[Seq[Int]]   = be_>=(2).forall     // fail after the first failure
-def allBeGreaterThan3: Matcher[Seq[Int]]   = be_>=(2).foreach    // like forall but execute all matchers and collect the results
-def haveOneGreaterThan2: Matcher[Seq[Int]] = be_>=(2).atLeastOnce
 }}
 
  * using `zip` operators for to match tuples ${snippet{
@@ -146,12 +142,23 @@ iterator.next must be_==(3).eventually
  * using `await` to create a matcher that will match on `Matcher[Future[T]]`: ${snippet{
 // 8<--
 import time.NoTimeConversions._
+    import scala.concurrent._
+    import duration._
+    import ExecutionContext.Implicits.global
+// 8<--
+future(1) must be_>(0).await
+future { Thread.sleep(100); 1 } must be_>(0).await(retries = 2, timeout = 100.millis)
+}}
+
+ * using `await` to create a `Result` on a `Future` that returns a `Matcher[T]`: ${snippet{
+// 8<--
+import time.NoTimeConversions._
 import scala.concurrent._
 import duration._
 import ExecutionContext.Implicits.global
 // 8<--
-future(1) must be_>(0).await
-future { Thread.sleep(100); 1 } must be_>(0).await(retries = 2, timeout = 100.millis)
+future(1 === 1).await
+future(1 === 1).await(retries = 2, timeout = 100.millis)
 }}
 
  * using `when` or `unless` to apply a matcher only if a condition is satisfied: ${snippet{
@@ -283,7 +290,7 @@ foreachWhen(Seq(3, 10, 15)) { case a if a > 3 => a must be_>(5) }
 atLeastOnce(Seq(3, 4, 5)) ((_:Int) must be_>(2))
 // check only the elements defined for the partial function
 atLeastOnceWhen(Seq(3, 4, 10)) { case a if a > 3 => a must be_>(5) }
-}} 
+}}
 """
   def scalaCheckSection =
 s2"""
@@ -502,6 +509,10 @@ m.get(999) must_== "element"
 
 ***specs2*** matchers can also be passed directly as arguments: ${snippet{
 m.get(===(123)) returns "one"
+}}
+
+**Note** the call above works because there is an implicit method `argThat` which transforms a specs2 `Matcher[T]` into a Hamcrest one and in turn call Mockito's `org.mockito.Matchers.argThat` method to register the Hamcrest matcher. However [sometimes](https://groups.google.com/forum/#!msg/specs2-users/_slOZQoICzU/DF-ZQCq_GmkJ) the implicit conversion is not called and you have to explicitly call the `argThat` method like so: ${snippet{
+  m.get(argThat(===(123))) returns "one"
 }}
 
 ##### Callbacks

@@ -56,23 +56,38 @@ trait MatchersImplicits extends Expectations
 
   implicit class matcherContainResult[T](m: Matcher[T]) { outer =>
     private val cc: ContainWithResult[T] = ContainWithResult(ValueChecks.matcherIsValueCheck(m))
-
+    /** @deprecated use collection must contain(matcher).forall instead */
     def forall                          : ContainWithResult[T] = cc.forall
+    /** @deprecated use collection must contain(matcher).foreach instead */
     def foreach                         : ContainWithResult[T] = cc.foreach
+    /** @deprecated use collection must contain(matcher).atLeastOnce instead */
     def atLeastOnce                     : ContainWithResult[T] = cc.atLeastOnce
+    /** @deprecated use collection must contain(matcher).atMostOnce instead */
     def atMostOnce                      : ContainWithResult[T] = cc.atMostOnce
+    /** @deprecated use collection must contain(matcher).atLeast instead */
     def atLeast(n: Times)               : ContainWithResult[T] = cc.atLeast(n)
+    /** @deprecated use collection must contain(matcher).atLeast instead */
     def atLeast(n: Int)                 : ContainWithResult[T] = cc.atLeast(n)
+    /** @deprecated use collection must contain(matcher).atMost instead */
     def atMost(n: Times)                : ContainWithResult[T] = cc.atMost(n)
+    /** @deprecated use collection must contain(matcher).atMost instead */
     def atMost(n: Int)                  : ContainWithResult[T] = cc.atMost(n)
+    /** @deprecated use collection must contain(matcher).between instead */
     def between(min: Times, max: Times) : ContainWithResult[T] = cc.between(min, max)
+    /** @deprecated use collection must contain(matcher).between instead */
     def between(min: Int, max: Int)     : ContainWithResult[T] = cc.between(min, max)
+    /** @deprecated use collection must contain(matcher).exactly instead */
     def exactly(n: Times)               : ContainWithResult[T] = cc.exactly(n)
+    /** @deprecated use collection must contain(matcher).exactly instead */
     def exactly(n: Int)                 : ContainWithResult[T] = cc.exactly(n)
 
+    /** @deprecated use collection must contain(matcher).forall(values) instead */
     def forall(values: GenTraversableOnce[T])     : MatchResult[GenTraversableOnce[T]] = cc.forall     (createExpectable(values))
+    /** @deprecated use collection must contain(matcher).foreach(values) instead */
     def foreach(values: GenTraversableOnce[T])    : MatchResult[GenTraversableOnce[T]] = cc.foreach    (createExpectable(values))
+    /** @deprecated use collection must contain(matcher).atLeastOnce(values) instead */
     def atLeastOnce(values: GenTraversableOnce[T]): MatchResult[GenTraversableOnce[T]] = cc.atLeastOnce(createExpectable(values))
+    /** @deprecated use collection must contain(matcher).atMostOnce(values) instead */
     def atMostOnce(values: GenTraversableOnce[T]) : MatchResult[GenTraversableOnce[T]] = cc.atMostOnce (createExpectable(values))
   }
 
@@ -83,10 +98,16 @@ trait MatchersImplicits extends Expectations
   }
 
   implicit class MatcherFunction[S, T](f: S => Matcher[T]) {
-    /** @return a function which will return a matcher checking a sequence of objects  */
+    /**
+     * @deprecated use collection must contain(exactly(seq.map(f))).inOrder
+     * @return a function which will return a matcher checking a sequence of objects
+     */
     def toSeq = (s: Seq[S]) => new SeqMatcher(s, f)
 
-    /** @return a function which will return a matcher checking a set of objects */
+    /**
+     * @deprecated use collection must contain(exactly(seq.map(f))).inOrder
+     * @return a function which will return a matcher checking a set of objects
+     */
     def toSet = (s: Set[S]) => new SetMatcher(s, f)
 
   }
@@ -122,17 +143,11 @@ trait MatchersImplicits extends Expectations
    * Usage: List(1, 2, 3) must ((beEqualTo(_:Int)).toSeq)(List(1, 2, 3))
    */
   class SeqMatcher[S, T](s: Seq[S], f: S => Matcher[T]) extends Matcher[Seq[T]] {
-    def apply[U <: Seq[T]](t: Expectable[U]) = {
-      val bothSequences = t.value.toList zip s.toList
-      val results = bothSequences.map { case (t1, s1) => f(s1).apply(createExpectable(t1)) }
-      if (s.size != t.value.size)
-        result(false,
-               "the seqs contain the same number of elements",
-                t.description + " contains " + t.value.size + " elements while " + q(s) + " contains " + s.size + " elements",
-                t)
-      else
-        result(FoldrGenerator[List].reduce(MatchResultMessageReducer[T], results), t)
-    }
+    def apply[U <: Seq[T]](t: Expectable[U]) =
+      ContainWithResultSeq[T](s.map(f).map(ValueChecks.matcherIsValueCheck[T]),
+                              containsAtLeast = true,
+                              containsAtMost = true,
+                              checkOrder = true).apply(t)
   }
 
   /**
@@ -140,23 +155,12 @@ trait MatchersImplicits extends Expectations
    * Usage: List(1, 2, 3) must ((beEqualTo(_:Int)).toSet)(List(2, 1, 3)) }}}
    */
   class SetMatcher[S, T](s: Set[S], f: S => Matcher[T]) extends Matcher[Set[T]] {
-    def apply[U <: Set[T]](t: Expectable[U]) = {
-      val setToTest = t
-      if (s.size != setToTest.value.size)
-        result(false, 
-               "the sets contain the same number of elements",
-                setToTest.description + " contains " + setToTest.value.size + " elements while " + q(s) + " contains " + s.size + " elements",
-                setToTest)
-      else {
-        val results = setToTest.value.map { (element: T) =>
-          s.find { (otherElement:S) => f(otherElement).apply(createExpectable(element)).isSuccess } match {
-            case None => result(false, "all matches", "no match for element " + q(element), setToTest)
-            case Some(x) => result(true, q(element) + " matches with " + x, "no match for element " + q(element), setToTest)
-          }
-        }
-        result(FoldrGenerator[Set].reduce(MatchResultMessageReducer[U], results), setToTest)
-      }
-    }
+    def apply[U <: Set[T]](t: Expectable[U]) =
+      ContainWithResultSeq[T](s.toSeq.map(f).map(ValueChecks.matcherIsValueCheck[T]),
+        containsAtLeast = true,
+        containsAtMost = true,
+        checkOrder = false).apply(t)
+
   }
 
   /** verify the function f for all the values, stopping after the first failure */

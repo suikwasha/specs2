@@ -17,6 +17,8 @@ import Utilities._
 import Defaults._
 import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
 import com.typesafe.tools.mima.plugin.MimaKeys.previousArtifact
+import xerial.sbt.Sonatype._
+import SonatypeKeys._
 
 object build extends Build {
   type Settings = Def.Setting[_]
@@ -39,7 +41,7 @@ object build extends Build {
     organization := "org.specs2",
     specs2Version in GlobalScope <<= version,
     specs2ShellPrompt,
-    scalazVersion := "7.0.5",
+    scalazVersion := "7.0.6",
     scalaVersion := "2.10.3")
 
   lazy val specs2Version = settingKey[String]("defines the current specs2 version")
@@ -219,7 +221,8 @@ object build extends Build {
       generateUserGuide,
       generateIndexPage,
       publishSite,
-      publishSignedArtifacts,
+      publishSignedArtifacts, 
+      releaseToSonatype,
       notifyHerald,
       tagRelease,
       setNextVersion,
@@ -311,6 +314,8 @@ object build extends Build {
    */
   lazy val publishSignedArtifacts = executeAggregateTask(publishSigned, "Publishing signed artifacts")
 
+  lazy val releaseToSonatype = executeStepTask(sonatypeReleaseAll, "Closing and promoting the Sonatype repo")
+
   lazy val publicationSettings: Seq[Settings] = Seq(
     publishTo in Global <<= version { v: String =>
       val nexus = "https://oss.sonatype.org/"
@@ -342,7 +347,8 @@ object build extends Build {
         </developers>
     ),
     credentials := Seq(Credentials(Path.userHome / ".sbt" / "specs2.credentials"))
-  )
+  ) ++
+  sonatypeSettings
 
   /**
    * NOTIFICATION
