@@ -77,6 +77,9 @@ STUBS
      + with a subtype matcher
      + a Set
      + a List
+   a value can be returned when a return type was
+     + an AnyVal
+
 
  It is also possible to throw an exception from a mocked method
    + then when the mocked method is called, the exception will be thrown
@@ -310,6 +313,13 @@ STUBS
       val mocked: java.util.List[String] = mock[java.util.List[String]].contains("o") returns true
       mocked.contains("o") must beTrue
     }
+    eg := {
+      returnsAnyVal.getSomeAnyVal() returns SomeAnyVal(1)
+      returnsAnyVal.getAny() returns SomeAnyVal(2)
+
+      returnsAnyVal.getSomeAnyVal() must_== SomeAnyVal(1)
+      returnsAnyVal.getAny() must_== SomeAnyVal(2)
+    }
   }
   "number of calls" - new group with list {
     val list2 = mock[java.util.List[String]]
@@ -464,6 +474,12 @@ STUBS
     }
     val byname = mock[ByName]
 
+    trait ReturnsAnyVal {
+      def getSomeAnyVal(): SomeAnyVal
+      def getAny(): Any
+    }
+    val returnsAnyVal = mock[ReturnsAnyVal]
+
     trait WithFunction1 { def call(f: Int => String) = f(0) }
     val function1 = mock[WithFunction1]
 
@@ -493,4 +509,4 @@ STUBS
 
 trait WithFunctionNothing { def call(f: Int => Nothing) = 1 }
 trait WithFunctionAny { def call(f: () => Any) = 1 }
-
+case class SomeAnyVal(n: Int) extends AnyVal
